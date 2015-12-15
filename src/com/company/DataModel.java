@@ -1,0 +1,625 @@
+package com.company;
+import java.sql.*;
+import java.util.*;
+
+
+public class DataModel {
+
+    private static final String PROTOCOL = "jdbc:mysql://localhost:3306/";
+    private static final String DB_NAME = "sys"; //Database Name
+    private static final String USER = "root"; // User
+    private static final String PASS = "1234"; //Password
+
+    private static LinkedList<Statement> allStatements = new LinkedList<Statement>();
+    private static Statement statement = null;
+    private static Connection connection = null;
+    private static ResultSet resultSet = null;
+
+    PreparedStatement preparedStatement = null;
+
+    // CREATE
+    public DataModel() {
+       System.out.print("Drivers "+ setup());
+        openDatabaseConnections();
+       createTableSQL();
+
+    }
+
+    protected void createTableSQL() {
+
+        String createAlbumsTableSQL = "create table albums (" +
+                "albumId INT PRIMARY KEY, " +
+                "consignorId INT, " +
+                "artist VARCHAR(45), " +
+                "title VARCHAR(45), " +
+
+                "condition INT, " +
+                "price FLOAT, " +
+                "date_consigned DATE, " +
+                "status INT, " +
+                "date_sold DATE)";
+
+
+        String createAlbumTableAction = "Create album table";
+        executeSqlUpdate(createAlbumsTableSQL, createAlbumTableAction);
+
+        String createConsignorsTableSQL = "create table consignor (" +
+                "consignorId int PRIMARY KEY, " +
+                "name varchar(30), " +
+                "phone varchar(30), " +
+                "email varchar(30), " +
+                "amount_owed FLOAT)";
+        String createConsignorsTableAction = "Create consignors table";
+        executeSqlUpdate(createConsignorsTableSQL, createConsignorsTableAction);
+
+        String createPaymentsTableSQL = "create table payments (" +
+                "paymentId int PRIMARY KEY, " +
+                "consignorId int, " +
+                "date_paid DATE, " +
+                "amount_paid FLOAT)";
+        String createPaymentsTableAction = "Create payments table";
+        executeSqlUpdate(createPaymentsTableSQL, createPaymentsTableAction);
+    }
+    public static boolean setup() {
+
+
+            //Load driver class
+            try {
+                String Driver = "com.mysql.jdbc.Driver";
+                Class.forName(Driver);
+            } catch (ClassNotFoundException cnfe) {
+                System.out.println("No database drivers found. Quitting");
+                return false;
+            }
+            return  true ;
+
+    }
+    // DATABASE METHODS
+
+    protected static void openDatabaseConnections() {
+
+        try {
+            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/test", USER, PASS);
+            statement = connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+            allStatements.add(statement);
+
+        } catch (SQLException sqlException) {
+            System.out.println("Could not establish connection.");
+            System.out.println(sqlException);
+        }
+    }
+
+    public static void closeDbConnections() {
+
+        try {
+            if (resultSet != null) {
+                resultSet.close();
+                System.out.println("Result set closed.");
+            }
+        } catch (SQLException sqle) {
+            sqle.printStackTrace();
+        }
+
+        // Close all of the statements. Stored a reference to each statement in
+        // allStatements so we can loop over all of them and close them all.
+        for (Statement statement : allStatements) {
+
+            if (statement != null) {
+                try {
+                    statement.close();
+                    System.out.println("Statement closed.");
+
+                } catch (SQLException sqle) {
+                    System.out.println("Error closing statement.");
+                    sqle.printStackTrace();
+                }
+            }
+        }
+
+        try {
+            if (connection != null) {
+                connection.close();
+                System.out.println("Database connection closed.");
+            }
+
+        } catch (SQLException sqle) {
+            sqle.printStackTrace();
+        }
+    }
+
+
+    protected static void executeSqlUpdate(String sql, String sqlAction) {
+        try {
+            statement.executeUpdate(sql);
+            System.out.println(sqlAction + " succeeded.");
+
+        } catch (Exception sqlException) {
+            System.out.println(sqlAction + " failed. Could not execute SQL statement.");
+            System.out.println(sqlException);
+        }
+    }
+
+    //UPDATE
+    protected static void executePsUpdate(PreparedStatement ps, String sqlAction) {
+        try {
+            ps.executeUpdate();
+            System.out.println(sqlAction + " succeeded.");
+
+        } catch (SQLException sqlException) {
+            System.out.println(sqlAction + " failed. Could not execute SQL statement.");
+            System.out.println(sqlException);
+        }
+    }
+
+
+
+
+
+
+
+
+
+    // Insert test album data into database.
+    protected static void executeAddAlbumSql(int consignorId, String artist, String title, int condition, java.sql.Date date_consigned, int status, float price) {
+
+        try {
+            String psInsertSql = "INSERT INTO albums (consignorId, artist, title,  condition, date_consigned, status, price) " +
+                    "VALUES ( ?, ?, ?, ?, ?, ?, ?, ? )";
+            PreparedStatement psAlbum = connection.prepareStatement(psInsertSql);
+            allStatements.add(psAlbum);
+            psAlbum.setInt(1, consignorId);
+            psAlbum.setString(2, artist);
+            psAlbum.setString(3, title);
+
+            psAlbum.setInt(4, condition);
+            psAlbum.setDate(5, date_consigned);
+            psAlbum.setInt(6, status);
+            psAlbum.setFloat(7, price);
+            executePsUpdate(psAlbum, "Add album");
+
+        } catch (SQLException sqlException) {
+            System.out.println("Could not add album.");
+            System.out.println(sqlException);
+        }
+    }
+
+    // ALBUM METHODS
+
+    public static void addAlbum(Album album) {
+
+        try {
+            String psInsertSql = "INSERT INTO albums (consignorId, artist, title, size, condition, price, date_consigned, status) " +
+                    "VALUES ( ?, ?, ? , ?, ?, ?, ?, ? )";
+            PreparedStatement psAlbum = connection.prepareStatement(psInsertSql);
+            allStatements.add(psAlbum);
+            psAlbum.setInt(1, album.consignorId);
+            psAlbum.setString(2, album.artist);
+            psAlbum.setString(3, album.title);
+            psAlbum.setInt(4, album.condition);
+            psAlbum.setFloat(5, album.price);
+            psAlbum.setDate(6, album.dateConsigned);
+            psAlbum.setInt(7, album.status);
+            psAlbum.executeUpdate();
+            System.out.println("Added album: " + album);
+
+        } catch (SQLException sqlException) {
+            System.out.println("Could not add album.");
+            System.out.println(sqlException);
+        }
+    }
+
+    public static int getNumCopiesInInventory(String artist, String title, int status) {
+
+
+        int copiesInStore = 0;
+
+        try {
+            String invCountSql = "SELECT COUNT(*) AS numCopies FROM albums WHERE artist = ? AND title = ? AND status = ?";
+
+            PreparedStatement psCheckInventory = connection.prepareStatement(invCountSql);
+            allStatements.add(psCheckInventory);
+            psCheckInventory.setString(1, artist);
+            psCheckInventory.setString(2, title);
+            psCheckInventory.setInt(3, status);
+            resultSet = psCheckInventory.executeQuery();
+            resultSet.next();
+            copiesInStore = resultSet.getInt("numCopies");
+
+        } catch (SQLException sqle) {
+            System.out.println("Failed to count number of copies.");
+            System.out.println(sqle);
+        }
+
+        return copiesInStore;
+    }
+
+    public static ArrayList<Album> searchInventoryForAlbums(String searchString, int fieldToSearch) {
+        // Return ResultSet of albums with matching title or artist
+        // TODO Ignore case
+
+        String searchSql = "";
+        ArrayList<Album> searchResults = new ArrayList<Album>();
+
+        if (fieldToSearch == SellsRegisterGUI.ARTIST_FIELD) {
+            searchSql = "SELECT * FROM albums WHERE (status = 1 OR status = 2) AND artist LIKE ? ORDER BY artist";
+
+        } else if (fieldToSearch == SellsRegisterGUI.TITLE_FIELD) {
+            searchSql = "SELECT * FROM albums WHERE (status = 1 OR status = 2) AND title LIKE ? ORDER BY title";
+
+        } else {
+            return null;
+        }
+
+        try {
+            PreparedStatement psSearch = connection.prepareStatement(searchSql);
+            allStatements.add(psSearch);
+            String searchStringPlusPercentSigns = "%" + searchString + "%";
+            psSearch.setString(1, searchStringPlusPercentSigns);
+            resultSet = psSearch.executeQuery();
+            searchResults = resultSetToAlbumArrayList(resultSet);
+
+        } catch (SQLException sqle) {
+            System.out.println("Could not execute search.");
+            System.out.println(sqle);
+        }
+
+        return searchResults;
+    }
+
+    public static void updateAlbumStatus(Album albumToUpdate, int newStatus, java.sql.Date dateSold) {
+
+        try {
+            String updateStatusSql = "";
+
+            if (newStatus == Album.STATUS_SOLD) {
+                updateStatusSql = "UPDATE albums SET status = ?, date_sold = ? WHERE albumId = ?";
+                updateConsignorBalance(albumToUpdate);
+
+            }  else if (newStatus == Album.STATUS_BARGAIN_BIN) {
+                updateStatusSql = "UPDATE albums SET status = ?, price = 1 WHERE albumId = ?";
+            }
+
+
+
+            PreparedStatement psUdateAlbumStatus = connection.prepareStatement(updateStatusSql);
+            allStatements.add(psUdateAlbumStatus);
+
+            if (newStatus == Album.STATUS_SOLD) {
+                psUdateAlbumStatus.setInt(1, newStatus);
+                psUdateAlbumStatus.setDate(2, dateSold);
+                psUdateAlbumStatus.setInt(3, albumToUpdate.albumId);
+
+            } else {
+                psUdateAlbumStatus.setInt(1, newStatus);
+                psUdateAlbumStatus.setInt(2, albumToUpdate.albumId);
+            }
+
+            executePsUpdate(psUdateAlbumStatus, "Update album status");
+
+        } catch (SQLException sqlException) {
+            System.out.println("Could not update album status.");
+            System.out.println(sqlException);
+        }
+    }
+
+    public static ArrayList<Album> findAlbumsOfAge(java.sql.Date consignedBefore, int status) {
+
+        ArrayList<Album> albumsConsignedBeforeDate = new ArrayList<Album>();
+        String agingSql = "";
+
+        if (status == Album.STATUS_STORE) {
+            agingSql = "SELECT * FROM albums WHERE status = 1 AND date_consigned < ?";
+
+        } else if (status == Album.STATUS_BARGAIN_BIN) {
+            agingSql = "SELECT * FROM albums WHERE status = 2 AND date_consigned < ?";
+
+        } else {
+            return null;
+        }
+
+        try {
+            PreparedStatement psAging = connection.prepareStatement(agingSql);
+            allStatements.add(psAging);
+            psAging.setDate(1, consignedBefore);
+            resultSet = psAging.executeQuery();
+            albumsConsignedBeforeDate = resultSetToAlbumArrayList(resultSet);
+
+        } catch (SQLException sqle) {
+            System.out.println("Could not execute search.");
+            System.out.println(sqle);
+        }
+
+        return albumsConsignedBeforeDate;
+    }
+
+    public static ArrayList<ConsignorAlbum> findAllAlbumsFromConsignor(int consignorId) {
+
+        ArrayList<Album> albumsFromConsignor = new ArrayList<Album>();
+        String consignorAlbumsSql = "SELECT * FROM albums WHERE consignorId = ? ORDER BY status ASC, date_consigned DESC";
+
+        try {
+            PreparedStatement psConsignorAlbums = connection.prepareStatement(consignorAlbumsSql);
+            allStatements.add(psConsignorAlbums);
+            psConsignorAlbums.setInt(1, consignorId);
+            resultSet = psConsignorAlbums.executeQuery();
+            albumsFromConsignor = resultSetToAlbumArrayList(resultSet);
+
+        } catch (SQLException sqle) {
+            System.out.println("Could not execute search.");
+            System.out.println(sqle);
+        }
+
+        ArrayList<ConsignorAlbum> consignorAlbums = new ArrayList<ConsignorAlbum>();
+        for (Album album : albumsFromConsignor) {
+            ConsignorAlbum newConsignorAlbum = new ConsignorAlbum(album);
+            consignorAlbums.add(newConsignorAlbum);
+        }
+
+        return consignorAlbums;
+    }
+
+    public static ArrayList<ConsignorAlbum> findUnsoldAlbumsFromConsignor(int consignorId) {
+
+        ArrayList<Album> unsoldAlbumsFromConsignor = new ArrayList<Album>();
+        String consignorUnsoldAlbumsSql = "SELECT * FROM albums WHERE consignorId = ? AND status = 1 AND date_consigned < ? ORDER BY date_consigned DESC";
+
+        try {
+            PreparedStatement psConsignorUnsoldAlbums = connection.prepareStatement(consignorUnsoldAlbumsSql);
+            allStatements.add(psConsignorUnsoldAlbums);
+            psConsignorUnsoldAlbums.setInt(1, consignorId);
+            psConsignorUnsoldAlbums.setDate(2, Album.albumsConsignedBeforeThisDateGoToBargainBinToday());
+            resultSet = psConsignorUnsoldAlbums.executeQuery();
+            unsoldAlbumsFromConsignor = resultSetToAlbumArrayList(resultSet);
+
+        } catch (SQLException sqle) {
+            System.out.println("Could not execute search.");
+            System.out.println(sqle);
+        }
+
+        ArrayList<ConsignorAlbum> consignorAlbums = new ArrayList<ConsignorAlbum>();
+        for (Album album : unsoldAlbumsFromConsignor) {
+            ConsignorAlbum newConsignorAlbum = new ConsignorAlbum(album);
+            consignorAlbums.add(newConsignorAlbum);
+        }
+
+        return consignorAlbums;
+    }
+
+    private static ArrayList<Album> resultSetToAlbumArrayList(ResultSet resultSet) {
+        ArrayList<Album> arraylist = new ArrayList<Album>();
+
+        try {
+            while (resultSet.next()) {
+                int albumId = resultSet.getInt("albumId");
+                int consignor = resultSet.getInt("consignorId");
+                String artist = resultSet.getString("artist");
+                String title = resultSet.getString("title");
+
+                int condition = resultSet.getInt("condition");
+                float price = resultSet.getFloat("price");
+                java.sql.Date dateConsigned = resultSet.getDate("date_consigned");
+                int status = resultSet.getInt("status");
+                java.sql.Date dateSold = resultSet.getDate("date_sold");
+
+                Album newAlbum = new Album(albumId, consignor, artist, title,  condition, price, dateConsigned, status, dateSold);
+                arraylist.add(newAlbum);
+            }
+        } catch (SQLException sqle) {
+            System.out.println("Could not create album.");
+            System.out.println(sqle);
+        }
+        return arraylist;
+    }
+
+    // CONSIGNOR METHODS
+
+    public static void addConsignor(String name, String email, String phone) {
+
+        try {
+            String psInsertConsignorSql = "INSERT INTO consignors (name, email, phone) " +
+                    "VALUES ( ?, ?, ? )";
+            PreparedStatement psConsignor = connection.prepareStatement(psInsertConsignorSql);
+            allStatements.add(psConsignor);
+            psConsignor.setString(1, name);
+            psConsignor.setString(2, email);
+            psConsignor.setString(3, phone);
+            psConsignor.executeUpdate();
+            System.out.println("Added consignor: " + name);
+
+        } catch (SQLException sqlException) {
+            System.out.println("Could not add consignor.");
+            System.out.println(sqlException);
+        }
+    }
+
+    public static void removeConsignor(Consignor consignorToRemove) {
+
+        try {
+            String psRemoveConsignorSql = "DELETE FROM consignors WHERE consignorId = ?";
+            PreparedStatement psRemoveConsignor = connection.prepareStatement(psRemoveConsignorSql);
+            allStatements.add(psRemoveConsignor);
+            psRemoveConsignor.setInt(1, consignorToRemove.consignorId);
+            psRemoveConsignor.executeUpdate();
+            System.out.println("Deleted consignor: " + consignorToRemove.name);
+
+        } catch (SQLException sqlException) {
+            System.out.println("Could not remove consignor.");
+            System.out.println(sqlException);
+        }
+    }
+
+    public static ArrayList<Consignor> getAllConsignors() {
+        ArrayList<Consignor> consignorArrayList = new ArrayList<Consignor>();
+        String getConsignorsSql = "SELECT * FROM consignors ORDER BY name ASC";
+
+        try {
+            resultSet = statement.executeQuery(getConsignorsSql);
+            consignorArrayList = resultSetToConsignorArrayList(resultSet);
+
+        } catch (SQLException sqle) {
+            System.out.println("Could not execute search.");
+            System.out.println(sqle);
+        }
+
+        return consignorArrayList;
+    }
+
+    public static ArrayList<Consignor> getConsignorsToNotify() {
+        ArrayList<Consignor> consignorArrayList = new ArrayList<Consignor>();
+        java.sql.Date albumsConsignedBeforeDate = Album.albumsConsignedBeforeThisDateGoToBargainBinToday();
+
+        // Informed by this tutorial: https://howtoprogramwithjava.com/sql-subquery/
+        String getConsignorsSql = "SELECT * FROM consignors WHERE consignorId in (SELECT DISTINCT consignorId FROM albums WHERE status = 1 AND date_consigned < ?) ORDER BY name";
+
+        try {
+            PreparedStatement psConsignorsToNotify = connection.prepareStatement(getConsignorsSql);
+            allStatements.add(psConsignorsToNotify);
+            psConsignorsToNotify.setDate(1, albumsConsignedBeforeDate);
+            resultSet = psConsignorsToNotify.executeQuery();
+            consignorArrayList = resultSetToConsignorArrayList(resultSet);
+
+        } catch (SQLException sqle) {
+            System.out.println("Could not execute search.");
+            System.out.println(sqle);
+        }
+
+        return consignorArrayList;
+    }
+
+    public static ArrayList<Consignor> getConsignorsToPay() {
+        ArrayList<Consignor> consignorArrayList = new ArrayList<Consignor>();
+        String getConsignorsSql = "SELECT * FROM consignors WHERE amount_owed > 10 ORDER BY name ASC";
+
+        try {
+            resultSet = statement.executeQuery(getConsignorsSql);
+            consignorArrayList = resultSetToConsignorArrayList(resultSet);
+
+        } catch (SQLException sqle) {
+            System.out.println("Could not execute search.");
+            System.out.println(sqle);
+        }
+
+        return consignorArrayList;
+    }
+
+    private static void setConsignorBalance(int consignorId, float newBalance) {
+        String psSetConsignorBalanceSql = "UPDATE consignors SET amount_owed = ? WHERE consignorId = ?";
+
+        try {
+            PreparedStatement psSetConsignorBalance = connection.prepareStatement(psSetConsignorBalanceSql);
+            allStatements.add(psSetConsignorBalance);
+            psSetConsignorBalance.setFloat(1, newBalance);
+            psSetConsignorBalance.setInt(2, consignorId);
+            psSetConsignorBalance.executeUpdate();
+
+        } catch (SQLException sqle) {
+            System.out.println("Failed to read result set.");
+            System.out.println(sqle);
+        }
+    }
+
+    private static float getConsignorBalance(int consignorId) {
+        String getConsignorBalanceSql = "SELECT amount_owed FROM consignors WHERE consignorId = ?";
+        float consignorBalance = 0.0f;
+
+        try {
+            PreparedStatement psConsignorBalance = connection.prepareStatement(getConsignorBalanceSql);
+            allStatements.add(psConsignorBalance);
+            psConsignorBalance.setInt(1, consignorId);
+            ResultSet consignorRS = psConsignorBalance.executeQuery();
+            while (consignorRS.next()) {
+                consignorBalance = consignorRS.getFloat("amount_owed");
+            }
+
+        } catch (SQLException sqle) {
+            System.out.println("Failed to read result set.");
+            System.out.println(sqle);
+        }
+        return consignorBalance;
+    }
+
+    private static void updateConsignorBalance(Album albumSold) {
+        float amountConsignorEarned = albumSold.price * .4f;
+        float consignorBalance = getConsignorBalance(albumSold.consignorId);
+        consignorBalance += amountConsignorEarned;
+        setConsignorBalance(albumSold.consignorId, consignorBalance);
+    }
+
+    private static void updateConsignorBalance(Payment paymentMade) {
+        float consignorBalance = getConsignorBalance(paymentMade.consignorId);
+        consignorBalance -= paymentMade.amount;
+        setConsignorBalance(paymentMade.consignorId, consignorBalance);
+    }
+
+    // Convert result set containing consignor data to arrayList of consignor objects
+    private static ArrayList<Consignor> resultSetToConsignorArrayList(ResultSet resultSet) {
+        ArrayList<Consignor> arraylist = new ArrayList<Consignor>();
+
+        try {
+            while (resultSet.next()) {
+                String consignorName = resultSet.getString("name");
+                String consignorEmail = resultSet.getString("email");
+                String consignorPhone = resultSet.getString("phone");
+                int id = resultSet.getInt("consignorId");
+                float amountOwed = resultSet.getFloat("amount_owed");
+                Consignor newConsignor = new Consignor(id, consignorName, consignorEmail, consignorPhone, amountOwed);
+                arraylist.add(newConsignor);
+            }
+
+        } catch (SQLException sqle) {
+            System.out.println("Failed to read result set.");
+            System.out.println(sqle);
+        }
+
+        return arraylist;
+    }
+
+    // PAYMENT METHODS
+
+    public static void recordPayment(Payment paymentMade) {
+
+        updateConsignorBalance(paymentMade);
+
+        try {
+            String psInsertPaymentSql = "INSERT INTO payments (consignorId, date_paid, amount_paid) " +
+                    "VALUES ( ?, ?, ? )";
+            PreparedStatement psInsertPayment = connection.prepareStatement(psInsertPaymentSql);
+            allStatements.add(psInsertPayment);
+            psInsertPayment.setInt(1, paymentMade.consignorId);
+            psInsertPayment.setDate(2, paymentMade.date);
+            psInsertPayment.setFloat(3, paymentMade.amount);
+            psInsertPayment.executeUpdate();
+            System.out.println("Added payment: " + paymentMade.date + ", " + paymentMade.amount);
+
+        } catch (SQLException sqlException) {
+            System.out.println("Could not add payment.");
+            System.out.println(sqlException);
+        }
+    }
+
+    public static ArrayList<Payment> findAllPaymentsToConsignor(int consignorId) {
+
+        ArrayList<Payment> paymentsToConsignor = new ArrayList<Payment>();
+        String consignorPaymentsSql = "SELECT * FROM payments WHERE consignorId = ? ORDER BY date_paid DESC";
+
+        try {
+            PreparedStatement psConsignorPayments = connection.prepareStatement(consignorPaymentsSql);
+            allStatements.add(psConsignorPayments);
+            psConsignorPayments.setInt(1, consignorId);
+            resultSet = psConsignorPayments.executeQuery();
+
+            while (resultSet.next()) {
+                java.sql.Date date = resultSet.getDate("date_paid");
+                float amount = resultSet.getFloat("amount_paid");
+                Payment newPayment = new Payment(consignorId, date, amount);
+                paymentsToConsignor.add(newPayment);
+            }
+
+        } catch (SQLException sqle) {
+            System.out.println("Could not execute search.");
+            System.out.println(sqle);
+        }
+
+        return paymentsToConsignor;
+    }
+}

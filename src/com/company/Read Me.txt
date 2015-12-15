@@ -1,0 +1,2 @@
+Acknowledgment
+most of the code come from stack overflow but in full disclosure that bulck design is attributed a movie database that i found online
